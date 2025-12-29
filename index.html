@@ -6,7 +6,10 @@
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Adobe 知識王 Week3</title>
 
+  <!-- LIFF -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <!-- React / Babel / Tailwind -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -25,14 +28,14 @@
       padding: 0;
       height: 100%;
       background: #050510;
-      overflow: hidden;            /* ✅ 整頁不允許上下滾 */
+      overflow: hidden;                /* ✅ 整頁不讓上下滑 */
       overscroll-behavior: none;
       -webkit-text-size-adjust: 100%;
       font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
     }
-
     #root { height: 100%; }
 
+    /* ✅ 滿版背景（你的 background.jpg） */
     .fullbg {
       position: fixed;
       inset: 0;
@@ -40,6 +43,7 @@
       background-size: cover;
       background-repeat: no-repeat;
       transform: translateZ(0);
+      will-change: transform;
       z-index: -2;
     }
     .bg-dim {
@@ -53,15 +57,16 @@
     .safe-wrap{
       height: 100svh;
       height: 100dvh;
-      padding-top: calc(10px + var(--safe-top));
-      padding-bottom: calc(10px + var(--safe-bottom));
-      padding-left: calc(10px + var(--safe-left));
-      padding-right: calc(10px + var(--safe-right));
+      padding-top: calc(12px + var(--safe-top));
+      padding-bottom: calc(12px + var(--safe-bottom));
+      padding-left: calc(12px + var(--safe-left));
+      padding-right: calc(12px + var(--safe-right));
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
+    /* 進場下滑 / 退場左滑 */
     .enter-down { animation: enterDown 520ms cubic-bezier(.2,.9,.2,1) both; }
     @keyframes enterDown {
       from { transform: translateY(-18px); opacity: 0; }
@@ -73,34 +78,40 @@
       to   { transform: translateX(-28px); opacity: 0; }
     }
 
-    /* ✅ 題目圖片區：固定在螢幕內，不要把高度撐爆 */
+    /* ✅ 題目圖滿版：固定在畫面內（不撐出滾動） */
     .img-fit {
       width: 100%;
-      max-height: calc(100dvh - 170px); /* header + 按鈕區預留 */
+      max-height: calc(100dvh - 170px); /* 預留按鈕區高度 */
       object-fit: contain;
       display: block;
       user-select: none;
       -webkit-user-drag: none;
-      pointer-events: none; /* 讓點擊落在熱區上 */
+      pointer-events: none; /* 點擊交給熱區 */
     }
 
-    /* ✅ 4 個透明點選區（左上/右上/左下/右下） */
+    /* ✅ 四象限點擊熱區（等同你 week2 點插圖選項的感覺） */
     .hotspot {
       position: absolute;
       border-radius: 18px;
       background: rgba(255,255,255,0.00);
-      transition: background 120ms ease, outline 120ms ease;
       outline: 2px solid rgba(255,255,255,0);
+      transition: background 120ms ease, outline 120ms ease;
       -webkit-tap-highlight-color: transparent;
     }
     .hotspot:active { background: rgba(255,255,255,0.10); }
-    .hotspot.selected { outline: 2px solid rgba(255,255,255,0.95); background: rgba(255,255,255,0.08); }
+    .hotspot.selected { outline: 2px solid rgba(255,255,255,0.95); background: rgba(255,255,255,0.06); }
 
-    /* 解析頁手風琴：不讓整頁滾，用折疊消化高度 */
-    .accordion-body {
-      white-space: pre-line;
-      line-height: 1.55;
+    /* ✅ 解析頁：外層不滾，內容太長就卡片內滾 */
+    .inner-scroll {
+      max-height: calc(100dvh - 240px);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-right: 2px;
     }
+    .inner-scroll::-webkit-scrollbar { width: 6px; }
+    .inner-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 999px; }
+
+    .btn-wrap { white-space: normal; line-height: 1.15; }
   </style>
 </head>
 
@@ -110,6 +121,9 @@
   <script type="text/babel">
     const { useEffect, useMemo, useState } = React;
 
+    /***********************
+     * ✅ 你的檔案都在 repo 根目錄（正確路徑）
+     ***********************/
     const ASSETS = {
       bg: "./background.jpg",
       cover: "./fengmian.jpg",
@@ -119,10 +133,13 @@
     const PANTONE_PAST_URL = "https://www.pantone.com/color-of-the-year";
     const MUST_FULL_SCORE_TO_REDEEM = true;
 
+    /***********************
+     * ✅ 題庫：只用答案判斷＋解析文字（題目本身不顯示）
+     * 選項點擊順序固定：
+     * 左上= A(0) / 右上= B(1) / 左下= C(2) / 右下= D(3)
+     ***********************/
     const QUESTIONS = [
       {
-        title: "Q1｜以下哪一套 Adobe 軟體，主要用途「不是」用來製作靜態圖片？",
-        options: ["A","B","C","D"],
         answerIndex: 3,
         answerText: "D. Adobe After Effects",
         explanation:
@@ -131,8 +148,6 @@
 並非以靜態圖片為主要應用場景。`
       },
       {
-        title: "Q2｜Adobe 與 Runway 的合作內容，以下哪一項有提及？",
-        options: ["A","B","C","D"],
         answerIndex: 2,
         answerText: "C. 將 Runway Gen-4.5 整合至 Firefly",
         explanation:
@@ -141,8 +156,6 @@
 以強化影片生成與創作流程的應用彈性。`
       },
       {
-        title: "Q3｜以下哪一項「不是」Adobe Firefly 目前整合的合作生成模型來源？",
-        options: ["A","B","C","D"],
         answerIndex: 3,
         answerText: "D. Midjourney",
         explanation:
@@ -151,8 +164,6 @@
 Midjourney 則為獨立平台，未整合於 Firefly 中。`
       },
       {
-        title: "Q4｜關於 Adobe Firefly 的生成內容，下列哪一項「不屬於」其主要範疇？",
-        options: ["A","B","C","D"],
         answerIndex: 0,
         answerText: "A. 試算表數據分析",
         explanation:
@@ -161,8 +172,6 @@ Midjourney 則為獨立平台，未整合於 Firefly 中。`
 並非用於資料處理或數據分析用途。`
       },
       {
-        title: "Q5｜Pantone 公布的 2026 年度代表色名稱為何？",
-        options: ["A","B","C","D"],
         answerIndex: 1,
         answerText: "B. Cloud Dancer（雲上舞白）",
         explanation:
@@ -180,17 +189,17 @@ Midjourney 則為獨立平台，未整合於 Firefly 中。`
       const [qIndex, setQIndex] = useState(0);
       const [answers, setAnswers] = useState(Array(QUESTIONS.length).fill(null));
       const [isLeaving, setIsLeaving] = useState(false);
-      const [openExplain, setOpenExplain] = useState(0);
 
       const score = useMemo(() => {
         return answers.reduce((acc, v, i) => acc + (v === QUESTIONS[i].answerIndex ? 1 : 0), 0);
       }, [answers]);
 
+      // ✅ LIFF expand
       useEffect(() => {
         (async () => {
           try {
             if (!window.liff) return;
-            const LIFF_ID = "2008592497-M8lBAPJW";
+            const LIFF_ID = "2008592497-M8lBAPJW"; // 若 week3 用新 LIFF，再換這裡
             await liff.init({ liffId: LIFF_ID });
             await new Promise(r => setTimeout(r, 80));
             if (liff.isInClient()) liff.expand();
@@ -209,7 +218,6 @@ Midjourney 則為獨立平台，未整合於 Firefly 中。`
       function startQuiz(){
         setAnswers(Array(QUESTIONS.length).fill(null));
         setQIndex(0);
-        setOpenExplain(0);
         go("quiz");
       }
 
@@ -241,7 +249,7 @@ Midjourney 則為獨立平台，未整合於 Firefly 中。`
       }
 
       const pageClass = (isLeaving ? "exit-left" : "enter-down");
-      const currentPicked = answers[qIndex];
+      const picked = answers[qIndex];
 
       return (
         <>
@@ -256,15 +264,7 @@ Midjourney 則為獨立平台，未整合於 Firefly 中。`
                   <div className="relative w-full rounded-[26px] overflow-hidden shadow-2xl">
                     <img src={ASSETS.cover} className="w-full h-auto block" alt="cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
-
                     <div className="absolute bottom-4 left-4 right-4">
-                      <div className="text-white text-2xl font-extrabold tracking-tight">
-                        Adobe 知識王 Week3
-                      </div>
-                      <div className="text-white/85 mt-1 text-sm">
-                        5 題快問快答，直接點插圖選項作答
-                      </div>
-
                       <div className="mt-3">
                         <Btn primary onClick={startQuiz}>開始挑戰 ▶</Btn>
                       </div>
@@ -275,56 +275,48 @@ Midjourney 則為獨立平台，未整合於 Firefly 中。`
 
               {page === "quiz" && (
                 <Card>
+                  {/* ✅ 不顯示題目文字，只顯示進度 */}
                   <div className="flex items-center justify-between">
-                    <div className="text-white/90 text-sm font-semibold">
+                    <div className="text-white/90 text-sm font-extrabold">
                       {qIndex + 1}/{QUESTIONS.length}
                     </div>
-                    <div className="text-white/80 text-sm">
+                    <div className="text-white/70 text-sm">
                       得分：{score}
                     </div>
                   </div>
 
-                  <div className="mt-2 text-white font-extrabold leading-snug">
-                    {QUESTIONS[qIndex].title}
-                  </div>
-
-                  {/* ✅ 題目圖滿版 + 4 點選熱區 */}
+                  {/* ✅ 題目全圖 + 四象限點擊 */}
                   <div className="mt-3 relative w-full rounded-2xl overflow-hidden shadow-lg bg-black/20">
                     <img src={ASSETS.qimg[qIndex]} className="img-fit" alt={"q"+(qIndex+1)} />
 
                     {/* 左上 A */}
                     <button
-                      className={"hotspot " + (currentPicked===0 ? "selected" : "")}
+                      className={"hotspot " + (picked===0 ? "selected" : "")}
                       onClick={() => pick(0)}
                       style={{ left:"4%", top:"6%", width:"44%", height:"40%" }}
                       aria-label="選 A"
                     />
                     {/* 右上 B */}
                     <button
-                      className={"hotspot " + (currentPicked===1 ? "selected" : "")}
+                      className={"hotspot " + (picked===1 ? "selected" : "")}
                       onClick={() => pick(1)}
                       style={{ right:"4%", top:"6%", width:"44%", height:"40%" }}
                       aria-label="選 B"
                     />
                     {/* 左下 C */}
                     <button
-                      className={"hotspot " + (currentPicked===2 ? "selected" : "")}
+                      className={"hotspot " + (picked===2 ? "selected" : "")}
                       onClick={() => pick(2)}
                       style={{ left:"4%", bottom:"6%", width:"44%", height:"40%" }}
                       aria-label="選 C"
                     />
                     {/* 右下 D */}
                     <button
-                      className={"hotspot " + (currentPicked===3 ? "selected" : "")}
+                      className={"hotspot " + (picked===3 ? "selected" : "")}
                       onClick={() => pick(3)}
                       style={{ right:"4%", bottom:"6%", width:"44%", height:"40%" }}
                       aria-label="選 D"
                     />
-
-                    {/* 小提示 */}
-                    <div className="absolute top-2 right-2 text-xs font-bold px-2 py-1 rounded-full bg-black/40 text-white/90">
-                      直接點選插圖作答
-                    </div>
                   </div>
 
                   <div className="mt-4 flex gap-3">
@@ -340,46 +332,39 @@ Midjourney 則為獨立平台，未整合於 Firefly 中。`
                 <Card>
                   <div className="text-white text-xl font-extrabold">整張解析</div>
                   <div className="text-white/80 text-sm mt-1">
-                    先衝完 5 題再一次對答案的爽感保留 😎
+                    先玩完再一次看解析（保留你喜歡的節奏）
                   </div>
 
-                  <div className="mt-4 grid gap-2">
+                  {/* ✅ 解析內容放卡片內滾動（整頁不滾） */}
+                  <div className="mt-4 inner-scroll grid gap-3">
                     {QUESTIONS.map((q, i) => {
                       const ok = answers[i] === q.answerIndex;
-                      const open = openExplain === i;
                       return (
-                        <div key={i} className="rounded-2xl bg-white/10 overflow-hidden border border-white/10">
-                          <button
-                            className="w-full px-4 py-3 flex items-center justify-between gap-3 text-left"
-                            onClick={() => setOpenExplain(open ? -1 : i)}
-                          >
-                            <div className="text-white font-bold">
-                              Q{i+1} {ok ? "✅" : "❌"}
+                        <div key={i} className="rounded-2xl bg-white/10 p-4 border border-white/10">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="text-white font-extrabold">Q{i+1}</div>
+                            <div className={
+                              "shrink-0 text-xs font-extrabold px-2 py-1 rounded-full " +
+                              (ok ? "bg-emerald-400 text-black" : "bg-rose-400 text-black")
+                            }>
+                              {ok ? "答對" : "答錯"}
                             </div>
-                            <div className="text-white/75 text-sm">
-                              {open ? "收起" : "展開"}
-                            </div>
-                          </button>
+                          </div>
 
-                          {open && (
-                            <div className="px-4 pb-4">
-                              <div className="text-white/90 text-sm">
-                                <span className="font-semibold">正確答案：</span>{q.answerText}
-                              </div>
-                              <div className="mt-2 text-white/75 text-sm accordion-body">
-                                <span className="font-semibold text-white/90">解析：</span>{"\n"}{q.explanation}
-                              </div>
-                            </div>
-                          )}
+                          <div className="mt-2 text-white/90 text-sm">
+                            <span className="font-semibold">正確答案：</span>{q.answerText}
+                          </div>
+
+                          <div className="mt-2 text-white/75 text-sm whitespace-pre-line leading-relaxed">
+                            <span className="font-semibold text-white/90">解析：</span>{"\n"}{q.explanation}
+                          </div>
                         </div>
                       );
                     })}
                   </div>
 
-                  <div className="mt-4 flex flex-col sm:flex-row gap-3">
-                    <Btn onClick={() => window.open(PANTONE_PAST_URL, "_blank")}>
-                      探索往年代表色
-                    </Btn>
+                  {/* ✅ 解析頁只留「看結果」 */}
+                  <div className="mt-4">
                     <Btn primary onClick={() => go("result")}>看結果 ▶</Btn>
                   </div>
                 </Card>
@@ -407,21 +392,25 @@ Midjourney 則為獨立平台，未整合於 Firefly 中。`
                     )}
                   </div>
 
+                  {/* ✅ 結果頁三顆按鈕（你要的第三顆在這裡） */}
                   <div className="mt-4 grid gap-3">
                     <Btn primary onClick={() => go("cover")}>再玩一次 ▶</Btn>
-
-                    <Btn onClick={() => window.open(PANTONE_PAST_URL, "_blank")}>
-                      探索往年代表色
-                    </Btn>
 
                     {MUST_FULL_SCORE_TO_REDEEM && (
                       <Btn
                         disabled={score !== QUESTIONS.length}
-                        onClick={() => alert("把這裡換成你 week2 的兌獎/分享流程即可")}
+                        onClick={() => alert("把這裡換成你 Week2 的兌獎/分享流程即可")}
                       >
                         {score === QUESTIONS.length ? "分享並領取獎勵" : "需滿分才可領獎"}
                       </Btn>
                     )}
+
+                    <Btn
+                      onClick={() => window.open(PANTONE_PAST_URL, "_blank")}
+                      className="btn-wrap"
+                    >
+                      前往探索 PANTONE<br className="sm:hidden" />歷年代表色
+                    </Btn>
                   </div>
                 </Card>
               )}
@@ -440,7 +429,7 @@ Midjourney 則為獨立平台，未整合於 Firefly 中。`
       );
     }
 
-    function Btn({ children, onClick, disabled, primary }){
+    function Btn({ children, onClick, disabled, primary, className="" }){
       return (
         <button
           onClick={onClick}
@@ -450,7 +439,8 @@ Midjourney 則為獨立平台，未整合於 Firefly 中。`
             (primary
               ? "bg-white text-black shadow-lg hover:shadow-xl"
               : "bg-white/14 text-white hover:bg-white/20") +
-            (disabled ? " opacity-50 cursor-not-allowed" : "")
+            (disabled ? " opacity-50 cursor-not-allowed" : "") +
+            " " + className
           }
         >
           {children}
