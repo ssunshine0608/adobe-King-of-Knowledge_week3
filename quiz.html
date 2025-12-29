@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Adobe 知識王 Week3</title>
+
+  <!-- LIFF（非 LIFF 環境也不會壞） -->
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <!-- React / Babel / Tailwind -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root{
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #050510;
+      overscroll-behavior: none;
+      -webkit-text-size-adjust: 100%;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    }
+    #root {
+      min-height: 100svh;
+      min-height: 100dvh;
+    }
+
+    /* ✅ 滿版背景（你的檔名：background.jpg） */
+    .fullbg {
+      position: fixed;
+      inset: 0;
+      background-position: center;
+      background-size: cover;
+      background-repeat: no-repeat;
+      transform: translateZ(0);
+      will-change: transform;
+      z-index: -2;
+    }
+    .bg-dim {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(1200px 900px at 50% 10%, rgba(0,0,0,0.15), rgba(0,0,0,0.68));
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .safe-wrap{
+      padding-top: calc(12px + var(--safe-top));
+      padding-bottom: calc(12px + var(--safe-bottom));
+      padding-left: calc(12px + var(--safe-left));
+      padding-right: calc(12px + var(--safe-right));
+    }
+
+    /* 進場下滑 / 退場左滑 */
+    .enter-down { animation: enterDown 520ms cubic-bezier(.2,.9,.2,1) both; }
+    @keyframes enterDown {
+      from { transform: translateY(-18px); opacity: 0; }
+      to   { transform: translateY(0); opacity: 1; }
+    }
+    .exit-left { animation: exitLeft 420ms cubic-bezier(.3,.0,.2,1) both; }
+    @keyframes exitLeft {
+      from { transform: translateX(0); opacity: 1; }
+      to   { transform: translateX(-28px); opacity: 0; }
+    }
+
+    /* 按鈕字多也能換行 */
+    .btn-wrap { white-space: normal; line-height: 1.15; }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useEffect, useMemo, useState } = React;
+
+    /***********************
+     * ✅ 你的圖片都在 repo 根目錄（正確路徑）
+     ***********************/
+    const ASSETS = {
+      bg: "./background.jpg",
+      cover: "./fengmian.jpg",
+      qimg: ["./q1.jpg","./q2.jpg","./q3.jpg","./q4.jpg","./q5.jpg"],
+    };
+
+    /***********************
+     * ✅ Pantone 往年代表色（你可換成自家整理頁）
+     ***********************/
+    const PANTONE_PAST_URL = "https://www.pantone.com/color-of-the-year";
+
+    /***********************
+     * ✅ 題庫（含解析）
+     ***********************/
+    const QUESTIONS = [
+      {
+        title: "Q1｜以下哪一套 Adobe 軟體，主要用途「不是」用來製作靜態圖片？",
+        options: [
+          "A. Adobe Photoshop",
+          "B. Adobe Illustrator",
+          "C. Adobe Express",
+          "D. Adobe After Effects",
+        ],
+        answerIndex: 3,
+        explanation:
+`Photoshop、Illustrator 與 Express 主要用於影像、插畫與視覺設計，
+而 After Effects 則專注於動畫與動態影像製作，
+並非以靜態圖片為主要應用場景。`
+      },
+      {
+        title: "Q2｜Adobe 與 Runway 的合作內容，以下哪一項有提及？",
+        options: [
+          "A. Runway 成為 Photoshop 內建濾鏡",
+          "B. Firefly 改用 Midjourney 模型",
+          "C. 將 Runway Gen-4.5 整合至 Firefly",
+          "D. Runway 專屬 Adobe 字體訂閱",
+        ],
+        answerIndex: 2,
+        explanation:
+`Adobe 宣布與 Runway 展開策略合作，
+並將其最新的 Gen-4.5 影片模型整合至 Firefly，
+以強化影片生成與創作流程的應用彈性。`
+      },
+      {
+        title: "Q3｜以下哪一項「不是」Adobe Firefly 目前整合的合作生成模型來源？",
+        options: [
+          "A. Black Forest Labs（Flux）",
+          "B. Runway",
+          "C. Adobe 自家模型",
+          "D. Midjourney",
+        ],
+        answerIndex: 3,
+        explanation:
+`Firefly 並非只使用單一模型，
+而是整合多方生成模型來因應不同創作需求。
+Midjourney 則為獨立平台，未整合於 Firefly 中。`
+      },
+      {
+        title: "Q4｜關於 Adobe Firefly 的生成內容，下列哪一項「不屬於」其主要範疇？",
+        options: [
+          "A. 試算表數據分析",
+          "B. 影像生成與編修",
+          "C. 向量圖形生成",
+          "D. 文字視覺效果",
+        ],
+        answerIndex: 0,
+        explanation:
+`Firefly 主要聚焦於創意與視覺相關的生成內容，
+包含圖片、向量圖形與文字視覺效果，
+並非用於資料處理或數據分析用途。`
+      },
+      {
+        title: "Q5｜Pantone 公布的 2026 年度代表色名稱為何？",
+        options: [
+          "A. Peach Fuzz（柔和桃）",
+          "B. Cloud Dancer（雲上舞白）",
+          "C. Viva Magenta（非凡洋紅）",
+          "D. Very Peri（長春花藍）",
+        ],
+        answerIndex: 1,
+        explanation:
+`Pantone 每年都會公布一款年度代表色。
+2026 年度代表色為 Cloud Dancer（雲上舞白）。
+其他選項中：
+2022 年度代表色：Very Peri（長春花藍）
+2023 年度代表色：Viva Magenta（非凡洋紅）
+2024 年度代表色：Peach Fuzz（柔和桃）`
+      },
+    ];
+
+    /***********************
+     * ✅ 沿用 week2：滿分才可領獎
+     ***********************/
+    const MUST_FULL_SCORE_TO_REDEEM = true;
+
+    function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+    function App(){
+      const [page, setPage] = useState("cover"); // cover | quiz | review | result
+      const [qIndex, setQIndex] = useState(0);
+      const [answers, setAnswers] = useState(Array(QUESTIONS.length).fill(null));
+      const [isLeaving, setIsLeaving] = useState(false);
+
+      const score = useMemo(() => {
+        return answers.reduce((acc, v, i) => acc + (v === QUESTIONS[i].answerIndex ? 1 : 0), 0);
+      }, [answers]);
+
+      // ✅ LIFF：能 expand 就 expand（非 LIFF 也不會報錯）
+      useEffect(() => {
+        (async () => {
+          try {
+            if (!window.liff) return;
+            // 這裡用你現有的 LIFF ID（若 week3 是新 ID 再換）
+            const LIFF_ID = "2008592497-M8lBAPJW";
+            await liff.init({ liffId: LIFF_ID });
+            await new Promise(r => setTimeout(r, 80));
+            if (liff.isInClient()) liff.expand();
+          } catch (e) {
+            console.log("LIFF init skipped:", e?.message || e);
+          }
+        })();
+      }, []);
+
+      // ✅ 退場動畫統一處理
+      function go(next){
+        setIsLeaving(true);
+        setTimeout(() => {
+          setIsLeaving(false);
+          setPage(next);
+        }, 420);
+      }
+
+      function startQuiz(){
+        setAnswers(Array(QUESTIONS.length).fill(null));
+        setQIndex(0);
+        go("quiz");
+      }
+
+      function chooseAnswer(idx){
+        const next = answers.slice();
+        next[qIndex] = idx;
+        setAnswers(next);
+      }
+
+      function nextQ(){
+        if (qIndex < QUESTIONS.length - 1){
+          setIsLeaving(true);
+          setTimeout(() => {
+            setIsLeaving(false);
+            setQIndex(qIndex + 1);
+          }, 420);
+        } else {
+          go("review");
+        }
+      }
+
+      function prevQ(){
+        setIsLeaving(true);
+        setTimeout(() => {
+          setIsLeaving(false);
+          setQIndex(clamp(qIndex - 1, 0, QUESTIONS.length - 1));
+        }, 420);
+      }
+
+      const pageClass = (isLeaving ? "exit-left" : "enter-down");
+
+      return (
+        <>
+          {/* ✅ 滿版背景 */}
+          <div className="fullbg" style={{ backgroundImage: `url(${ASSETS.bg})` }} />
+          <div className="bg-dim" />
+
+          <div className="safe-wrap min-h-[100svh] min-h-[100dvh] flex items-center justify-center">
+            <div className={"w-full max-w-[520px] " + pageClass}>
+
+              {page === "cover" && (
+                <Card>
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-full rounded-2xl overflow-hidden shadow-lg">
+                      <img
+                        src={ASSETS.cover}
+                        alt="cover"
+                        className="w-full h-auto block"
+                      />
+                    </div>
+
+                    <div className="text-center">
+                      <div className="text-white text-2xl font-extrabold tracking-tight">
+                        Adobe 知識王 Week3
+                      </div>
+                      <div className="text-white/80 mt-2 text-sm leading-relaxed">
+                        5 題快問快答，看看你是不是本週最懂 Adobe！
+                      </div>
+                    </div>
+
+                    <div className="w-full flex gap-3">
+                      <Btn primary onClick={startQuiz}>
+                        開始挑戰 ▶
+                      </Btn>
+                    </div>
+
+                    <div className="text-white/60 text-xs text-center">
+                      建議於 LINE 內開啟（LIFF）體驗最佳
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {page === "quiz" && (
+                <Card>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-white/90 text-sm">
+                      題目 {qIndex + 1} / {QUESTIONS.length}
+                    </div>
+                    <div className="text-white/90 text-sm font-semibold">
+                      目前得分：{score}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl overflow-hidden shadow-lg mb-4">
+                    <img
+                      src={ASSETS.qimg[qIndex]}
+                      alt={"q" + (qIndex+1)}
+                      className="w-full h-auto block"
+                    />
+                  </div>
+
+                  <div className="text-white text-lg font-bold leading-snug">
+                    {QUESTIONS[qIndex].title}
+                  </div>
+
+                  <div className="mt-4 grid gap-2">
+                    {QUESTIONS[qIndex].options.map((opt, idx) => {
+                      const picked = answers[qIndex] === idx;
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => chooseAnswer(idx)}
+                          className={
+                            "text-left w-full rounded-2xl px-4 py-3 transition " +
+                            (picked
+                              ? "bg-white text-black shadow-lg"
+                              : "bg-white/12 text-white hover:bg-white/18")
+                          }
+                        >
+                          <div className="font-semibold">{opt}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-5 flex gap-3">
+                    <Btn onClick={prevQ} disabled={qIndex === 0}>← 上一題</Btn>
+                    <Btn
+                      primary
+                      onClick={nextQ}
+                      disabled={answers[qIndex] === null}
+                    >
+                      {qIndex === QUESTIONS.length - 1 ? "看解析 ▶" : "下一題 ▶"}
+                    </Btn>
+                  </div>
+                </Card>
+              )}
+
+              {page === "review" && (
+                <Card>
+                  <div className="text-white text-xl font-extrabold">整張解析</div>
+                  <div className="text-white/80 text-sm mt-2">
+                    你可以快速看完解析再進結果頁～
+                  </div>
+
+                  <div className="mt-4 grid gap-3">
+                    {QUESTIONS.map((q, i) => {
+                      const ok = answers[i] === q.answerIndex;
+                      return (
+                        <div key={i} className="rounded-2xl bg-white/10 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="text-white font-bold leading-snug">
+                              {q.title}
+                            </div>
+                            <div className={
+                              "shrink-0 text-xs font-extrabold px-2 py-1 rounded-full " +
+                              (ok ? "bg-emerald-400 text-black" : "bg-rose-400 text-black")
+                            }>
+                              {ok ? "答對" : "答錯"}
+                            </div>
+                          </div>
+
+                          <div className="mt-2 text-white/90 text-sm">
+                            <span className="font-semibold">正確答案：</span>
+                            {q.options[q.answerIndex]}
+                          </div>
+
+                          <div className="mt-2 text-white/75 text-sm whitespace-pre-line leading-relaxed">
+                            <span className="font-semibold text-white/90">解析：</span>
+                            {"\n"}{q.explanation}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* ✅ 解析頁：左「探索往年」右「看結果」 */}
+                  <div className="mt-5 flex flex-col sm:flex-row gap-3">
+                    <Btn
+                      onClick={() => window.open(PANTONE_PAST_URL, "_blank")}
+                      className="btn-wrap"
+                    >
+                      探索更多<br className="sm:hidden" />往年代表色
+                    </Btn>
+
+                    <Btn primary onClick={() => go("result")}>
+                      看結果 ▶
+                    </Btn>
+                  </div>
+                </Card>
+              )}
+
+              {page === "result" && (
+                <Card>
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="text-center">
+                      <div className="text-white text-2xl font-extrabold">
+                        你的得分：{score} / {QUESTIONS.length}
+                      </div>
+
+                      {MUST_FULL_SCORE_TO_REDEEM ? (
+                        score === QUESTIONS.length ? (
+                          <div className="text-emerald-300 mt-2 font-semibold">
+                            滿分達成！可以領獎 ✅
+                          </div>
+                        ) : (
+                          <div className="text-rose-300 mt-2 font-semibold">
+                            差一點點～再挑戰一次拿滿分就能領獎！
+                          </div>
+                        )
+                      ) : (
+                        <div className="text-white/80 mt-2">
+                          感謝挑戰！你超棒～
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="w-full grid gap-3">
+                      <Btn primary onClick={() => go("cover")}>
+                        再玩一次 ▶
+                      </Btn>
+
+                      <Btn
+                        onClick={() => window.open(PANTONE_PAST_URL, "_blank")}
+                        className="btn-wrap"
+                      >
+                        探索更多往年代表色
+                      </Btn>
+
+                      {MUST_FULL_SCORE_TO_REDEEM && (
+                        <Btn
+                          disabled={score !== QUESTIONS.length}
+                          onClick={() => {
+                            // ✅ 這裡接你原本 week2 的兌獎 / 分享 / BotBonnie 流程
+                            alert("滿分才可領獎：把這裡換成你 week2 的兌獎流程即可。");
+                          }}
+                        >
+                          {score === QUESTIONS.length ? "分享並領取獎勵" : "需滿分才可領獎"}
+                        </Btn>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    function Card({ children }){
+      return (
+        <div className="mx-auto bg-black/35 backdrop-blur-md rounded-[28px] p-5 shadow-2xl border border-white/10">
+          {children}
+        </div>
+      );
+    }
+
+    function Btn({ children, onClick, disabled, primary, className = "" }){
+      return (
+        <button
+          onClick={onClick}
+          disabled={disabled}
+          className={
+            "w-full rounded-2xl px-4 py-3 font-extrabold transition active:scale-[0.99] " +
+            (primary
+              ? "bg-white text-black shadow-lg hover:shadow-xl"
+              : "bg-white/14 text-white hover:bg-white/20") +
+            (disabled ? " opacity-50 cursor-not-allowed" : "") +
+            " " + className
+          }
+        >
+          {children}
+        </button>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
