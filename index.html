@@ -131,7 +131,7 @@
 
     .explanation-title { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
     .explanation-subtitle { font-size: 12px; opacity: 0.85; }
-    .explanation-text { font-size: 14px; line-height: 1.6; margin-top: 10px; margin-bottom: 16px; white-space: pre-line; }
+    .explanation-text { font-size: 14px; line-height: 1.6; margin-top: 10px; margin-bottom: 16px; }
 
     .explanation-footer {
       display: flex;
@@ -523,9 +523,15 @@
                   </div>
                 </div>
 
-                <div className="explanation-text">
+                <div 
+                  className="explanation-text"
+                  style={{
+                    whiteSpace: currentQIndex === 4 ? "pre-line" : "normal"
+                  }}
+                >
                   {QUESTIONS[currentQIndex].explanation}
                 </div>
+
 
                 <div className="explanation-footer">
                   <span>目前分數：{score} 分</span>
