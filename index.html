@@ -25,6 +25,27 @@
       background: #0b1020;
     }
 
+    /* 超淡轉場霧：避免殘影，又不破壞節奏 */
+    .transition-mask {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(
+      to bottom,
+      rgba(0,0,0,0.12),
+      rgba(0,0,0,0.18)
+      );
+      opacity: 0;
+      animation: maskFade 200ms ease-out forwards;
+      z-index: 998;
+      pointer-events: none;
+    }
+
+@keyframes maskFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+
     body {
       font-family: "Noto Sans TC", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
       -webkit-user-select: none;
@@ -206,11 +227,11 @@
     correct: 1, // B
     explanation:
       "Pantone 每年都會公布一款年度代表色。\n" +
-      "2026 年度代表色為 Cloud Dancer（雲上舞白）。\n" +
-      "其他選項中：\n" +
-      "2022 年度代表色：Very Peri（長春花藍）\n" +
-      "2023 年度代表色：Viva Magenta（非凡洋紅）\n" +
-      "2024 年度代表色：Peach Fuzz（柔和桃）"
+      "2026 年度代表色為 Cloud Dancer（雲上舞白）。\n\n" +
+      "其他年度代表色：\n" +
+      "2022｜Very Peri（長春花藍）\n" +
+      "2023｜Viva Magenta（非凡洋紅）\n" +
+      "2024｜Peach Fuzz（柔和桃）"
   }
 ];
 
@@ -439,10 +460,7 @@
               </div>
             </div>
 
-            {/* ✅ 方案 A：過場遮罩（吃掉上一題殘影） */}
-            {isTransitioning && (
-              <div className="fixed inset-0 bg-black z-[998]"></div>
-            )}
+            {isTransitioning && <div className="transition-mask"></div>}
 
             {/* DEV 滑桿 */}
             {DEV_MODE && (
