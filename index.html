@@ -1,388 +1,257 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Adobe 知識王 Week3</title>
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Adobe 知識王挑戰賽｜Week 3</title>
 
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <!-- React / Babel / Tailwind -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <!-- 彩帶 -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+
   <style>
-    :root{
-      --safe-top: env(safe-area-inset-top, 0px);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
-      --safe-left: env(safe-area-inset-left, 0px);
-      --safe-right: env(safe-area-inset-right, 0px);
-    }
-    html, body {
+    html, body, #root {
       margin: 0;
       padding: 0;
       height: 100%;
-      background: #050510;
       overflow: hidden;
-      overscroll-behavior: none;
-      -webkit-text-size-adjust: 100%;
-      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      background: #0b1020;
     }
-    #root { height: 100%; }
-
-    .fullbg {
-      position: fixed;
-      inset: 0;
-      background-position: center;
-      background-size: cover;
-      background-repeat: no-repeat;
-      transform: translateZ(0);
-      will-change: transform;
-      z-index: -2;
-    }
-    .bg-dim {
-      position: fixed;
-      inset: 0;
-      background: radial-gradient(1200px 900px at 50% 10%, rgba(0,0,0,0.08), rgba(0,0,0,0.72));
-      z-index: -1;
-      pointer-events: none;
-    }
-
-    .safe-wrap{
-      height: 100svh;
-      height: 100dvh;
-      padding-top: calc(12px + var(--safe-top));
-      padding-bottom: calc(12px + var(--safe-bottom));
-      padding-left: calc(12px + var(--safe-left));
-      padding-right: calc(12px + var(--safe-right));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .enter-down { animation: enterDown 520ms cubic-bezier(.2,.9,.2,1) both; }
-    @keyframes enterDown { from { transform: translateY(-18px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    .exit-left { animation: exitLeft 420ms cubic-bezier(.3,.0,.2,1) both; }
-    @keyframes exitLeft { from { transform: translateX(0); opacity: 1; } to { transform: translateX(-28px); opacity: 0; } }
-
-    .img-fit {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      display: block;
+    body {
+      font-family: "Noto Sans TC", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-user-select: none;
       user-select: none;
-      -webkit-user-drag: none;
-      pointer-events: none;
+    }
+    .touch-highlight:active {
+      background-color: rgba(255,255,255,0.22);
+      border-radius: 16px;
     }
 
-    .hit {
-      position: absolute;
+    /* 題目卡動畫 */
+    .q-enter { animation: qEnter 520ms cubic-bezier(.22,.92,.18,1) both; }
+    .q-exit  { animation: qExit 300ms ease-out both; }
+    @keyframes qEnter {
+      from { opacity:0; transform:translate3d(0,-22%,0); }
+      to   { opacity:1; transform:none; }
+    }
+    @keyframes qExit {
+      from { opacity:1; transform:none; }
+      to   { opacity:0; transform:translate3d(-30%,0,0); }
+    }
+
+    /* 解析浮層 */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.75);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity .22s ease;
+      z-index: 999;
+    }
+    .overlay.show { opacity: 1; pointer-events: auto; }
+
+    .explanation-card {
+      max-width: 360px; width: 88%;
+      padding: 20px 22px;
       border-radius: 18px;
-      background: rgba(255,255,255,0);
-      outline: 2px solid rgba(255,255,255,0);
-      transition: background 120ms ease, outline 120ms ease;
-      -webkit-tap-highlight-color: transparent;
+      color: #fff;
+      box-shadow: 0 18px 40px rgba(0,0,0,.35);
     }
-    .hit:active { background: rgba(255,255,255,0.12); }
-    .hit.selected { outline: 2px solid rgba(255,255,255,0.95); background: rgba(255,255,255,0.06); }
+    .correct {
+      background: radial-gradient(circle at top, #16a34a, #022c22);
+      border: 2px solid #22c55e;
+    }
+    .wrong {
+      background: radial-gradient(circle at top, #cb233c, #3f0f1f);
+      border: 2px solid #fb7185;
+    }
 
-    .inner-scroll {
-      max-height: calc(100dvh - 210px);
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      padding-right: 2px;
+    .btn-orange {
+      background: linear-gradient(90deg,#f59e0b,#f97316);
+      color:#fff;
+      text-shadow:0 1px 2px rgba(0,0,0,.35);
     }
-    .inner-scroll::-webkit-scrollbar { width: 6px; }
-    .inner-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 999px; }
   </style>
 </head>
 
 <body>
-  <div id="root"></div>
+<div id="root"></div>
 
-  <script type="text/babel">
-    const { useEffect, useMemo, useState } = React;
+<script type="text/babel">
+  /* =====================
+     基本設定（只換 repo）
+     ===================== */
+  const LINE_BOT_ID = "@your_bot_id";
+  const CDN_BASE =
+    "https://cdn.jsdelivr.net/gh/ssunshine0608/adobe-King-of-Knowledge_week3@main/";
+  const COVER_IMAGE = "fengmian.jpg";
 
-    const ASSETS = {
-      bg: "./background.jpg",
-      cover: "./fengmian.jpg",
-      qimg: ["./q1.jpg","./q2.jpg","./q3.jpg","./q4.jpg","./q5.jpg"],
+  /* =====================
+     Week3 題庫
+     ===================== */
+  const QUESTIONS = [
+    {
+      image: "q1.jpg",
+      correct: 3,
+      explanation:
+        "Photoshop、Illustrator 與 Express 主要用於影像與視覺設計，而 After Effects 則專注於動畫與動態影像製作。"
+    },
+    {
+      image: "q2.jpg",
+      correct: 2,
+      explanation:
+        "Adobe 與 Runway 展開策略合作，並將最新的 Gen-4.5 影片模型整合至 Firefly。"
+    },
+    {
+      image: "q3.jpg",
+      correct: 3,
+      explanation:
+        "Firefly 整合多方生成模型以因應不同創作需求，Midjourney 則為獨立平台。"
+    },
+    {
+      image: "q4.jpg",
+      correct: 0,
+      explanation:
+        "Firefly 聚焦於創意與視覺生成，並非用於試算表或數據分析。"
+    },
+    {
+      image: "q5.jpg",
+      correct: 1,
+      explanation:
+        "Pantone 2026 年度代表色為 Cloud Dancer（雲上舞白）。"
+    }
+  ];
+
+  const INIT_TOP = 38, INIT_HEIGHT = 42, INIT_LEFT = 8, INIT_WIDTH = 85;
+  const getImg = (f) => CDN_BASE + f;
+
+  function App() {
+    const [state,setState] = React.useState("start");
+    const [idx,setIdx] = React.useState(0);
+    const [score,setScore] = React.useState(0);
+    const [showExp,setShowExp] = React.useState(false);
+    const [ok,setOk] = React.useState(false);
+    const [anim,setAnim] = React.useState("q-enter");
+
+    React.useEffect(()=>{
+      if(state==="result" && score===100 && window.confetti){
+        confetti({particleCount:60,spread:60,origin:{x:.5,y:1}});
+      }
+    },[state,score]);
+
+    const answer = (i)=>{
+      if(showExp) return;
+      const correct = i===QUESTIONS[idx].correct;
+      setOk(correct);
+      if(correct) setScore(s=>s+20);
+      setTimeout(()=>setShowExp(true),160);
     };
 
-    const PANTONE_PAST_URL = "https://www.pantone.com/color-of-the-year";
-
-    // ✅ Week2 校準好的點擊區（你提供的）
-    const INIT_TOP = 38;     // %
-    const INIT_HEIGHT = 42;  // %
-    const INIT_LEFT = 8;     // %
-    const INIT_WIDTH = 85;   // %
-
-    const QUESTIONS = [
-      { answerIndex: 3, answerText: "D. Adobe After Effects",
-        explanation:
-`Photoshop、Illustrator 與 Express 主要用於影像、插畫與視覺設計，
-而 After Effects 則專注於動畫與動態影像製作，
-並非以靜態圖片為主要應用場景。`
-      },
-      { answerIndex: 2, answerText: "C. 將 Runway Gen-4.5 整合至 Firefly",
-        explanation:
-`Adobe 宣布與 Runway 展開策略合作，
-並將其最新的 Gen-4.5 影片模型整合至 Firefly，
-以強化影片生成與創作流程的應用彈性。`
-      },
-      { answerIndex: 3, answerText: "D. Midjourney",
-        explanation:
-`Firefly 並非只使用單一模型，
-而是整合多方生成模型來因應不同創作需求。
-Midjourney 則為獨立平台，未整合於 Firefly 中。`
-      },
-      { answerIndex: 0, answerText: "A. 試算表數據分析",
-        explanation:
-`Firefly 主要聚焦於創意與視覺相關的生成內容，
-包含圖片、向量圖形與文字視覺效果，
-並非用於資料處理或數據分析用途。`
-      },
-      { answerIndex: 1, answerText: "B. Cloud Dancer（雲上舞白）",
-        explanation:
-`Pantone 每年都會公布一款年度代表色。
-2026 年度代表色為 Cloud Dancer（雲上舞白）。
-其他選項中：
-2022 年度代表色：Very Peri（長春花藍）
-2023 年度代表色：Viva Magenta（非凡洋紅）
-2024 年度代表色：Peach Fuzz（柔和桃）`
-      },
-    ];
-
-    function App() {
-      const [gameState, setGameState] = useState("start"); // start | playing | review | result
-      const [currentQIndex, setCurrentQIndex] = useState(0);
-      const [answers, setAnswers] = useState(Array(QUESTIONS.length).fill(null));
-      const [isLeaving, setIsLeaving] = useState(false);
-
-      // ✅ 每題 20 分 → 滿分 100
-      const score = useMemo(() => {
-        const correct = answers.reduce((acc, v, i) => acc + (v === QUESTIONS[i].answerIndex ? 1 : 0), 0);
-        return correct * 20;
-      }, [answers]);
-      const isPerfect = score === 100;
-
-      useEffect(() => {
-        (async () => {
-          try {
-            if (!window.liff) return;
-            const LIFF_ID = "2008592497-M8lBAPJW";
-            await liff.init({ liffId: LIFF_ID });
-            await new Promise(r => setTimeout(r, 80));
-            if (liff.isInClient()) liff.expand();
-          } catch (e) {}
-        })();
-      }, []);
-
-      function go(next){
-        setIsLeaving(true);
-        setTimeout(() => {
-          setIsLeaving(false);
-          setGameState(next);
-        }, 420);
+    const next = ()=>{
+      setShowExp(false);
+      if(idx===QUESTIONS.length-1){
+        setState("result"); return;
       }
+      setAnim("q-exit");
+      setTimeout(()=>{
+        setIdx(i=>i+1);
+        setAnim("q-enter");
+      },300);
+    };
 
-      function startGame(){
-        setAnswers(Array(QUESTIONS.length).fill(null));
-        setCurrentQIndex(0);
-        go("playing");
-      }
-
-      function pickAnswer(idx){
-        const next = answers.slice();
-        next[currentQIndex] = idx;
-        setAnswers(next);
-      }
-
-      function nextQ(){
-        if (currentQIndex < QUESTIONS.length - 1){
-          setIsLeaving(true);
-          setTimeout(() => {
-            setIsLeaving(false);
-            setCurrentQIndex(currentQIndex + 1);
-          }, 420);
-        } else {
-          go("review");
-        }
-      }
-
-      function prevQ(){
-        if (currentQIndex === 0) return;
-        setIsLeaving(true);
-        setTimeout(() => {
-          setIsLeaving(false);
-          setCurrentQIndex(currentQIndex - 1);
-        }, 420);
-      }
-
-      const pageClass = isLeaving ? "exit-left" : "enter-down";
-      const picked = answers[currentQIndex];
-
-      // ✅ 用 Week2 的大框切成四條（上下四選）
-      const HITBOX = { left: INIT_LEFT, top: INIT_TOP, width: INIT_WIDTH, height: INIT_HEIGHT };
-      const ROW_GAP = 2.2;
-      const rowH = (HITBOX.height - ROW_GAP*3) / 4;
-      function hitStyle(rowIndex){
-        return {
-          left: HITBOX.left + "%",
-          width: HITBOX.width + "%",
-          top: (HITBOX.top + rowIndex * (rowH + ROW_GAP)) + "%",
-          height: rowH + "%",
-        };
-      }
-
+    if(state==="start"){
       return (
-        <>
-          <div className="fullbg" style={{ backgroundImage: `url(${ASSETS.bg})` }} />
-          <div className="bg-dim" />
-
-          <div className="safe-wrap">
-            <div className={"w-full max-w-[520px] " + pageClass}>
-
-              {gameState === "start" && (
-                <Card tight>
-                  <button
-                    onClick={startGame}
-                    className="relative w-full rounded-[26px] overflow-hidden shadow-2xl block"
-                    style={{ WebkitTapHighlightColor: "transparent" }}
-                    aria-label="開始遊戲"
-                  >
-                    <img src={ASSETS.cover} className="w-full h-auto block" alt="cover" />
-                  </button>
-                </Card>
-              )}
-
-              {gameState === "playing" && (
-                <Card>
-                  <div className="flex items-center justify-between">
-                    <div className="text-white/90 text-sm font-extrabold">
-                      {currentQIndex + 1}/{QUESTIONS.length}
-                    </div>
-                    <div className="text-white/70 text-sm">
-                      分數：{score}
-                    </div>
-                  </div>
-
-                  <div className="mt-3 relative w-full rounded-2xl overflow-hidden shadow-lg bg-black/20"
-                       style={{ aspectRatio: "9 / 16" }}>
-                    <img src={ASSETS.qimg[currentQIndex]} className="img-fit" alt={"q"+(currentQIndex+1)} />
-
-                    <button className={"hit " + (picked===0 ? "selected" : "")} style={hitStyle(0)} onClick={() => pickAnswer(0)} aria-label="選項 A" />
-                    <button className={"hit " + (picked===1 ? "selected" : "")} style={hitStyle(1)} onClick={() => pickAnswer(1)} aria-label="選項 B" />
-                    <button className={"hit " + (picked===2 ? "selected" : "")} style={hitStyle(2)} onClick={() => pickAnswer(2)} aria-label="選項 C" />
-                    <button className={"hit " + (picked===3 ? "selected" : "")} style={hitStyle(3)} onClick={() => pickAnswer(3)} aria-label="選項 D" />
-                  </div>
-
-                  <div className="mt-4 flex gap-3">
-                    <Btn secondary onClick={prevQ} disabled={currentQIndex===0}>← 上一題</Btn>
-                    <Btn primary onClick={nextQ} disabled={answers[currentQIndex]===null}>
-                      {currentQIndex===QUESTIONS.length-1 ? "看解析 ▶" : "下一題 ▶"}
-                    </Btn>
-                  </div>
-                </Card>
-              )}
-
-              {gameState === "review" && (
-                <Card>
-                  <div className="text-white text-xl font-extrabold">整張解析</div>
-
-                  <div className="mt-4 inner-scroll grid gap-3">
-                    {QUESTIONS.map((q, i) => {
-                      const ok = answers[i] === q.answerIndex;
-                      return (
-                        <div key={i} className="rounded-2xl bg-white/10 p-4 border border-white/10">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="text-white font-extrabold">Q{i+1}</div>
-                            <div className={
-                              "shrink-0 text-xs font-extrabold px-2 py-1 rounded-full " +
-                              (ok ? "bg-emerald-400 text-black" : "bg-rose-400 text-black")
-                            }>
-                              {ok ? "答對" : "答錯"}
-                            </div>
-                          </div>
-
-                          <div className="mt-2 text-white/90 text-sm">
-                            <span className="font-semibold">正確答案：</span>{q.answerText}
-                          </div>
-
-                          <div className="mt-2 text-white/75 text-sm whitespace-pre-line leading-relaxed">
-                            <span className="font-semibold text-white/90">解析：</span>{"\n"}{q.explanation}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="mt-4">
-                    <Btn primary onClick={() => go("result")}>看結果 ▶</Btn>
-                  </div>
-                </Card>
-              )}
-
-              {gameState === "result" && (
-                <Card>
-                  <div className="text-center">
-                    <div className="text-white text-2xl font-extrabold">
-                      你的得分：{score} / 100
-                    </div>
-
-                    {isPerfect ? (
-                      <div className="text-emerald-300 mt-2 font-semibold">滿分達成！可以領獎 ✅</div>
-                    ) : (
-                      <div className="text-rose-300 mt-2 font-semibold">需滿分才可領獎</div>
-                    )}
-                  </div>
-
-                  <div className="mt-4 grid gap-3">
-                    <Btn primary disabled={!isPerfect} onClick={() => alert("把這裡換成你 Week2 的分享/領獎流程")}>
-                      {isPerfect ? "🎁分享並領取獎勵" : "需滿分才可領獎"}
-                    </Btn>
-
-                    <Btn secondary onClick={() => window.open(PANTONE_PAST_URL, "_blank")}>
-                      探索更多PANTONE年度代表色
-                    </Btn>
-
-                    <Btn secondary onClick={() => go("start")}>
-                      再玩一次 ▶
-                    </Btn>
-                  </div>
-                </Card>
-              )}
-
+        <div className="w-full h-full flex items-center justify-center bg-gray-900">
+          <div className="w-full max-w-md px-4">
+            <div className="relative aspect-[9/16]">
+              <img src={getImg(COVER_IMAGE)} className="w-full h-full object-contain rounded-xl"/>
+              <div onClick={()=>{setState("playing");setScore(0);setIdx(0);}}
+                   className="absolute"
+                   style={{top:"80%",left:"32%",width:"36%",height:"8%"}} />
             </div>
           </div>
-        </>
-      );
-    }
-
-    function Card({ children, tight }){
-      return (
-        <div className={"mx-auto bg-black/35 backdrop-blur-md rounded-[28px] shadow-2xl border border-white/10 " + (tight ? "p-0" : "p-5")}>
-          {children}
         </div>
       );
     }
 
-    function Btn({ children, onClick, disabled, primary, secondary }){
-      const base =
-        "w-full rounded-2xl px-4 py-3 font-extrabold transition active:scale-[0.99] " +
-        (disabled ? "opacity-50 cursor-not-allowed " : "");
-      const cls = primary
-        ? "bg-white text-black shadow-lg hover:shadow-xl"
-        : "bg-white/16 text-white hover:bg-white/22";
+    if(state==="playing"){
+      const q=QUESTIONS[idx];
       return (
-        <button onClick={onClick} disabled={disabled} className={base + cls}>
-          {children}
-        </button>
+        <div className="w-full h-full flex items-center justify-center bg-gray-800 relative">
+          <div className="w-full max-w-md px-4">
+            <div className={`relative aspect-[9/16] ${anim}`}>
+              <img src={getImg(q.image)} className="w-full h-full object-contain rounded-xl"/>
+              <div className="absolute top-3 right-3 bg-black/70 text-white text-xs px-3 py-1 rounded-full">
+                分數：{score}
+              </div>
+              <div className="absolute grid grid-cols-2 grid-rows-2"
+                   style={{top:`${INIT_TOP}%`,height:`${INIT_HEIGHT}%`,
+                           left:`${INIT_LEFT}%`,width:`${INIT_WIDTH}%`}}>
+                {[0,1,2,3].map(i=>(
+                  <div key={i} onClick={()=>answer(i)} className="touch-highlight"/>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className={`overlay ${showExp?"show":""}`}>
+            <div className={`explanation-card ${ok?"correct":"wrong"}`}>
+              <div className="font-bold mb-2">{ok?"答對了 🎉":"答錯了"}</div>
+              <div className="text-sm leading-relaxed mb-4">{q.explanation}</div>
+              <div className="flex justify-between items-center text-sm">
+                <span>目前分數：{score}</span>
+                <button onClick={next}
+                        className="px-4 py-2 rounded-full bg-gradient-to-r from-orange-400 to-pink-500 text-white">
+                  {idx===QUESTIONS.length-1?"看結果 ▶":"下一題 ▶"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       );
     }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-  </script>
+    /* ===== 結果頁 ===== */
+    const full = score===100;
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-[#050816]">
+        <div className="w-full max-w-md px-6 text-center text-white">
+          <div className="text-[72px] font-black">{score}分</div>
+
+          {full ? (
+            <>
+              <div className="text-amber-300 font-bold mb-6">🏆 滿分達成！</div>
+              <button className="btn-orange w-full py-4 rounded-2xl text-xl font-black mb-4">
+                🎁 分享並領取獎勵
+              </button>
+            </>
+          ) : (
+            <div className="text-white/70 mb-6">未達滿分，再試一次吧！</div>
+          )}
+
+          {/* ✅ 新增：PANTONE 按鈕 */}
+          <button
+            onClick={()=>window.open("https://www.pantone.com/color-of-the-year","_blank")}
+            className="w-full py-4 rounded-2xl text-xl font-black bg-white/15 mb-4">
+            🎨 探索 PANTONE 歷年代表色
+          </button>
+
+          <button onClick={()=>window.location.reload()}
+                  className="text-white/60 underline text-sm">
+            再玩一次
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
 </body>
 </html>
